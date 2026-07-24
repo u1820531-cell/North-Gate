@@ -42,7 +42,11 @@ export async function encryptToken(token: string, deviceId: string): Promise<str
   combined.set(iv, salt.length);
   combined.set(new Uint8Array(encrypted), salt.length + iv.length);
 
-  return btoa(String.fromCharCode(...combined));
+  let binary = '';
+  for (let i = 0; i < combined.byteLength; i++) {
+    binary += String.fromCharCode(combined[i]);
+  }
+  return btoa(binary);
 }
 
 export async function decryptToken(encryptedBase64: string, deviceId: string): Promise<string> {
