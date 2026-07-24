@@ -34,21 +34,28 @@ export class GitHubSyncService {
   }
 
   private static serializeNote(note: Note, project?: Project): string {
-    const frontmatter = [
+    return [
       '---',
       `id: "${note.id}"`,
       `title: "${note.title.replace(/"/g, '\\"')}"`,
       `date: "${note.date}"`,
       `workspace: "${note.workspace}"`,
-      project ? `project: "${project.name}"` : 'project: null',
+      project ? `project: "${project.name.replace(/"/g, '\\"')}"` : 'project: null',
       `tags: [${note.tags.map((t) => `"${t}"`).join(', ')}]`,
       `updatedAt: "${note.updatedAt.toISOString()}"`,
       '---',
       '',
       note.content,
     ].join('\n');
-    
-    return frontmatter;
+  }
+
+  private static utf8ToBase64(str: string): string {
+    const bytes = new TextEncoder().encode(str);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
   }
 
   private static async getFileSHA(token: string, repo: string, path: string): Promise<string | null> {
@@ -88,7 +95,7 @@ export class GitHubSyncService {
         },
         body: JSON.stringify({
           message,
-          content: btoa(unescape(encodeURIComponent(content))),
+          content: this.utf8ToBase64(content),
           sha: payload.sha,
         }),
       });
@@ -121,4 +128,3 @@ export class GitHubSyncService {
     return results;
   }
 }
-
