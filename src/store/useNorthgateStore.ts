@@ -51,7 +51,9 @@ export const useNorthgateStore = create<NorthgateStore>((set, get) => ({
     const projects = await db.projects.toArray();
     const recentNotes = await db.notes.orderBy('updatedAt').reverse().limit(10).toArray();
     
-    const todayStr = new Date().toISOString().split('T')[0];
+    // ISO Date formatting fix without UTC offset mismatch
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const todayTasks = await db.tasks.filter(t => t.dueDate === todayStr).toArray();
 
     set({
@@ -109,7 +111,8 @@ export const useNorthgateStore = create<NorthgateStore>((set, get) => ({
     };
     await db.tasks.add(newTask);
     
-    const todayStr = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const todayTasks = await db.tasks.filter(t => t.dueDate === todayStr).toArray();
     set({ todayTasks });
   },
@@ -138,8 +141,12 @@ export const useNorthgateStore = create<NorthgateStore>((set, get) => ({
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    const mostRecentNoteDate = new Date(uniqueDates[0]);
-    mostRecentNoteDate.setHours(0, 0, 0, 0);
+    const parseLocalDate = (dateStr: string) => {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return new Date(y, m - 1, d, 0, 0, 0, 0);
+    };
+
+    const mostRecentNoteDate = parseLocalDate(uniqueDates[0]);
 
     if (mostRecentNoteDate.getTime() < yesterday.getTime()) {
       set({ streak: 0 });
@@ -148,11 +155,10 @@ export const useNorthgateStore = create<NorthgateStore>((set, get) => ({
 
     let checkDate = mostRecentNoteDate;
     for (let i = 0; i < uniqueDates.length; i++) {
-      const noteDate = new Date(uniqueDates[i]);
-      noteDate.setHours(0, 0, 0, 0);
+      const noteDate = parseLocalDate(uniqueDates[i]);
 
       const diffTime = Math.abs(checkDate.getTime() - noteDate.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
       if (diffDays <= 1) {
         currentStreak++;
